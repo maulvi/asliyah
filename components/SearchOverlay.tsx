@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Search, ArrowRight, TrendingUp, ChevronRight } from 'lucide-react';
+import { X, Search, ArrowRight, TrendingUp } from 'lucide-react';
 import { Product } from '../types';
 import { PRODUCTS } from '../constants';
+import { escapeInput } from '../utils/security';
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -29,15 +30,20 @@ const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, onProduc
   }, [isOpen]);
 
   useEffect(() => {
-    if (query.trim() === '') {
+    // Sanitize query before processing
+    const safeQuery = escapeInput(query.trim());
+
+    if (safeQuery === '') {
       setResults([]);
       return;
     }
     
+    const lowerQuery = safeQuery.toLowerCase();
+
     const filtered = PRODUCTS.filter(p => 
-      p.name.toLowerCase().includes(query.toLowerCase()) || 
-      p.category.toLowerCase().includes(query.toLowerCase()) ||
-      p.description.toLowerCase().includes(query.toLowerCase())
+      p.name.toLowerCase().includes(lowerQuery) || 
+      p.category.toLowerCase().includes(lowerQuery) ||
+      p.description.toLowerCase().includes(lowerQuery)
     );
     setResults(filtered);
   }, [query]);
@@ -48,6 +54,15 @@ const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, onProduc
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') onClose();
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Basic sanitization on input to prevent weird characters
+    const val = e.target.value;
+    // Allow only safe characters for search (alphanumeric, spaces, basic punctuation)
+    if (/^[a-zA-Z0-9\s\-_.,']*$/.test(val) || val === '') {
+        setQuery(val);
+    }
   };
 
   return (
@@ -75,7 +90,7 @@ const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, onProduc
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={handleInputChange}
             placeholder="Cari produk, koleksi, atau gaya..."
             className="w-full text-2xl md:text-4xl font-serif text-primary placeholder-gray-300 bg-transparent border-b border-gray-200 py-4 focus:outline-none focus:border-primary transition-colors"
           />

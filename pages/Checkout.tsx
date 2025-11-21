@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { CartItem } from '../types';
-import { ShieldCheck, Lock, CreditCard, ArrowLeft, CheckCircle2, Package, ChevronDown, ChevronUp, Landmark, Banknote, Wallet } from 'lucide-react';
+import { ShieldCheck, Lock, CreditCard, ArrowLeft, CheckCircle2, Package, ChevronDown, ChevronUp, Landmark, Banknote, Wallet, AlertCircle } from 'lucide-react';
+import { validateInput, escapeInput } from '../utils/security';
 
 interface CheckoutProps {
   cart: CartItem[];
@@ -19,9 +20,24 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [selectedBank, setSelectedBank] = useState('bca');
   
+  // Form State
+  const [formData, setFormData] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    address: '',
+    city: '',
+    zip: '',
+    cardNumber: '',
+    expiry: '',
+    cvc: ''
+  });
+
+  // Error State
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const FREE_SHIPPING_THRESHOLD = 1500000;
   const shippingCost = total >= FREE_SHIPPING_THRESHOLD ? 0 : 20000;
-  // COD Fee adds a small charge usually, but let's keep it simple or free for high conversion
   const codFee = paymentMethod === 'cod' ? 5000 : 0; 
   const finalTotal = total + shippingCost + codFee;
 
@@ -33,9 +49,55 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
     window.scrollTo(0, 0);
   }, []);
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    // 1. Sanitize Input (Client-side display sanitization)
+    const cleanValue = escapeInput(value);
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: cleanValue
+    }));
+
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!validateInput(formData.email, 'EMAIL')) newErrors.email = "Format email tidak valid";
+    if (!validateInput(formData.firstName, 'TEXT_SAFE')) newErrors.firstName = "Karakter tidak valid";
+    if (!validateInput(formData.lastName, 'TEXT_SAFE')) newErrors.lastName = "Karakter tidak valid";
+    if (!validateInput(formData.address, 'TEXT_SAFE')) newErrors.address = "Alamat mengandung karakter tidak valid";
+    if (!validateInput(formData.city, 'TEXT_SAFE')) newErrors.city = "Nama kota tidak valid";
+    if (!validateInput(formData.zip, 'ZIP')) newErrors.zip = "Kode pos tidak valid";
+
+    if (paymentMethod === 'card') {
+      // Basic Length Checks for demo
+      if (!/^[0-9\s]{16,19}$/.test(formData.cardNumber)) newErrors.cardNumber = "Nomor kartu tidak valid";
+      if (!formData.expiry) newErrors.expiry = "Wajib diisi";
+      if (!/^[0-9]{3,4}$/.test(formData.cvc)) newErrors.cvc = "CVC tidak valid";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    
+    if (!validateForm()) {
+      // Shake animation or visual cue could be added here
+      return;
+    }
+
     setIsProcessing(true);
+    
+    // Simulate secure processing
     setTimeout(() => {
       setIsProcessing(false);
       setIsSuccess(true);
@@ -46,14 +108,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
   };
 
   const handleExternalSubmit = () => {
-    const form = document.getElementById('checkout-form') as HTMLFormElement;
-    if (form) {
-      if (form.checkValidity()) {
-        handleSubmit();
-      } else {
-        form.reportValidity();
-      }
-    }
+    handleSubmit();
   };
 
   if (isSuccess) {
@@ -77,7 +132,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col animate-fade-in lg:h-screen lg:overflow-hidden">
-      {/* Header - Sticky on Mobile */}
+      {/* Header */}
       <header className="h-16 flex-none border-b border-gray-100 bg-white px-6 lg:px-8 flex justify-between items-center z-30 sticky top-0 lg:relative shadow-sm lg:shadow-none">
         <button 
           onClick={onBack} 
@@ -98,14 +153,14 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
         </div>
       </header>
 
-      {/* Main Layout: Mobile Scrollable / Desktop Fixed Split */}
+      {/* Main Layout */}
       <div className="flex-1 flex flex-col-reverse lg:flex-row overflow-visible lg:overflow-hidden">
         
-        {/* 1. FORM AREA (Left on Desktop, Bottom on Mobile) */}
+        {/* 1. FORM AREA */}
         <div className="w-full lg:w-[60%] h-auto lg:h-full overflow-visible lg:overflow-y-auto bg-white relative z-10 pb-32 lg:pb-0">
           <div className="w-full max-w-xl mx-auto px-6 lg:px-10 py-8">
               
-              <form id="checkout-form" onSubmit={handleSubmit} className="space-y-8 w-full">
+              <form id="checkout-form" onSubmit={handleSubmit} className="space-y-8 w-full" noValidate>
                 
                 {/* Contact Info */}
                 <div className="space-y-4 animate-slide-up" style={{animationDelay: '0.1s'}}>
@@ -116,11 +171,14 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
                   <div className="group">
                     <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Alamat Email</label>
                     <input 
-                      required 
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
                       type="email" 
                       placeholder="anda@contoh.com" 
-                      className="w-full h-12 bg-gray-50 border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" 
+                      className={`w-full h-12 bg-gray-50 border rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:ring-2 transition-all placeholder-gray-400 ${errors.email ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-gray-300 focus:border-accent focus:ring-accent/20'}`} 
                     />
+                    {errors.email && <div className="flex items-center gap-1 mt-1 text-xs text-red-500"><AlertCircle size={10}/> {errors.email}</div>}
                   </div>
                 </div>
 
@@ -133,28 +191,28 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-1">
                       <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Nama Depan</label>
-                      <input required type="text" placeholder="Budi" className="w-full h-12 bg-gray-50 border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                      <input name="firstName" value={formData.firstName} onChange={handleChange} type="text" placeholder="Budi" className={`w-full h-12 bg-gray-50 border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.firstName ? 'border-red-300 focus:ring-red-100' : 'border-gray-300 focus:border-accent focus:ring-accent/20'}`} />
                     </div>
                     <div className="col-span-1">
                       <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Nama Belakang</label>
-                      <input required type="text" placeholder="Santoso" className="w-full h-12 bg-gray-50 border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                      <input name="lastName" value={formData.lastName} onChange={handleChange} type="text" placeholder="Santoso" className={`w-full h-12 bg-gray-50 border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.lastName ? 'border-red-300 focus:ring-red-100' : 'border-gray-300 focus:border-accent focus:ring-accent/20'}`} />
                     </div>
                     <div className="col-span-2">
                       <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Alamat Lengkap</label>
-                      <input required type="text" placeholder="Jl. Sudirman No. 123" className="w-full h-12 bg-gray-50 border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                      <input name="address" value={formData.address} onChange={handleChange} type="text" placeholder="Jl. Sudirman No. 123" className={`w-full h-12 bg-gray-50 border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.address ? 'border-red-300 focus:ring-red-100' : 'border-gray-300 focus:border-accent focus:ring-accent/20'}`} />
                     </div>
                     <div className="col-span-1">
                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Kota</label>
-                       <input required type="text" placeholder="Jakarta Selatan" className="w-full h-12 bg-gray-50 border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                       <input name="city" value={formData.city} onChange={handleChange} type="text" placeholder="Jakarta Selatan" className={`w-full h-12 bg-gray-50 border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.city ? 'border-red-300 focus:ring-red-100' : 'border-gray-300 focus:border-accent focus:ring-accent/20'}`} />
                     </div>
                     <div className="col-span-1">
                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Kode Pos</label>
-                       <input required type="text" placeholder="12190" className="w-full h-12 bg-gray-50 border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                       <input name="zip" value={formData.zip} onChange={handleChange} type="text" placeholder="12190" className={`w-full h-12 bg-gray-50 border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.zip ? 'border-red-300 focus:ring-red-100' : 'border-gray-300 focus:border-accent focus:ring-accent/20'}`} />
                     </div>
                   </div>
                 </div>
 
-                {/* Payment Method Selection */}
+                {/* Payment Method */}
                 <div className="space-y-4 animate-slide-up" style={{animationDelay: '0.3s'}}>
                    <div className="flex items-center justify-between pb-2 border-b border-gray-200">
                     <h3 className="text-xl font-serif text-primary">Pembayaran</h3>
@@ -195,18 +253,19 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
                             <div>
                               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Nomor Kartu</label>
                               <div className="relative">
-                                <input required type="text" placeholder="0000 0000 0000 0000" className="w-full h-12 bg-white border border-gray-300 rounded-lg pl-11 pr-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                                <input name="cardNumber" value={formData.cardNumber} onChange={handleChange} type="text" placeholder="0000 0000 0000 0000" className={`w-full h-12 bg-white border rounded-lg pl-11 pr-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.cardNumber ? 'border-red-300' : 'border-gray-300 focus:border-accent'}`} />
                                 <CreditCard size={20} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                               </div>
+                              {errors.cardNumber && <p className="text-xs text-red-500 mt-1">{errors.cardNumber}</p>}
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Masa Berlaku</label>
-                                <input required type="text" placeholder="BB / TT" className="w-full h-12 bg-white border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                                <input name="expiry" value={formData.expiry} onChange={handleChange} type="text" placeholder="BB / TT" className={`w-full h-12 bg-white border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.expiry ? 'border-red-300' : 'border-gray-300 focus:border-accent'}`} />
                               </div>
                               <div>
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">CVC</label>
-                                <input required type="text" placeholder="123" className="w-full h-12 bg-white border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                                <input name="cvc" value={formData.cvc} onChange={handleChange} type="text" placeholder="123" className={`w-full h-12 bg-white border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.cvc ? 'border-red-300' : 'border-gray-300 focus:border-accent'}`} />
                               </div>
                             </div>
                         </div>
@@ -260,7 +319,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
         {/* 2. SUMMARY AREA (Right on Desktop, Top on Mobile) */}
         <div className="w-full lg:w-[40%] bg-[#f8f8f8] border-b lg:border-b-0 lg:border-l border-gray-200 flex flex-col h-auto lg:h-full shadow-[-10px_0_40px_rgba(0,0,0,0.02)] z-20 lg:z-10">
           
-          {/* Mobile Accordion Toggle Header */}
+          {/* Mobile Accordion */}
           <button 
             className="lg:hidden w-full p-4 flex justify-between items-center bg-gray-50 border-b border-gray-200"
             onClick={() => setShowMobileSummary(!showMobileSummary)}
@@ -372,7 +431,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
 
       </div>
 
-      {/* MOBILE FIXED BOTTOM BAR (Sticky Pay Button) */}
+      {/* MOBILE FIXED BOTTOM BAR */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] safe-area-bottom">
          <div className="flex gap-4 items-center">
             <div className="flex-1">

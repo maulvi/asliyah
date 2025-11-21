@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Star, Truck, ShieldCheck, Minus, Plus, Heart } from 'lucide-react';
 import { Product } from '../types';
 import ProductAttributes from '../components/ProductAttributes';
+import { sanitizeHtml } from '../utils/security';
 
 interface ProductDetailProps {
   product: Product;
@@ -49,6 +50,12 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
     setSelectedAttributes(initialSelection);
   }, [product, mainImage]);
 
+  // Security: Sanitize HTML content before rendering
+  // Memoize to prevent re-sanitizing on every render
+  const safeDescription = useMemo(() => {
+    return sanitizeHtml(product.short_description || product.description);
+  }, [product.short_description, product.description]);
+
   const handleAttributeChange = (name: string, value: string) => {
     setSelectedAttributes(prev => ({ ...prev, [name]: value }));
   };
@@ -72,6 +79,8 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
               <img 
                 src={activeImage} 
                 alt={product.name} 
+                // High priority for LCP if this is the first thing seen
+                fetchPriority="high"
                 className="w-full h-full object-cover transition-all duration-500" 
               />
             </div>
@@ -110,11 +119,11 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                 </div>
               </div>
 
-              {/* WordPress HTML Description Rendering */}
+              {/* Safe HTML Description Rendering */}
               <div 
                 className="py-2 text-base text-gray-700 leading-loose font-normal prose prose-sm max-w-none"
                 dangerouslySetInnerHTML={{ 
-                    __html: product.short_description || product.description 
+                    __html: safeDescription 
                 }}
               />
             </div>

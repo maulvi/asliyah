@@ -4,7 +4,6 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartDrawer from './components/CartDrawer';
 import SearchOverlay from './components/SearchOverlay';
-import AIStylist from './components/AIStylist'; 
 import { Product, CartItem, User } from './types';
 import { BLOG_POSTS } from './constants';
 import { Loader2 } from 'lucide-react';
@@ -223,8 +222,6 @@ const App: React.FC = () => {
         </main>
 
         <Footer />
-
-        <AIStylist currentProductContext={selectedProduct?.name} />
 
         <CartDrawer 
           isOpen={isCartOpen} 
