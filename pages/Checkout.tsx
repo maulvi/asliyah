@@ -52,7 +52,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    // 1. Sanitize Input (Client-side display sanitization)
+    // Security: Sanitize Input (prevent injection characters)
     const cleanValue = escapeInput(value);
 
     setFormData(prev => ({
@@ -69,18 +69,19 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    // Security: Validate against strict patterns (Penetration Testing Defense)
     if (!validateInput(formData.email, 'EMAIL')) newErrors.email = "Format email tidak valid";
     if (!validateInput(formData.firstName, 'TEXT_SAFE')) newErrors.firstName = "Karakter tidak valid";
     if (!validateInput(formData.lastName, 'TEXT_SAFE')) newErrors.lastName = "Karakter tidak valid";
     if (!validateInput(formData.address, 'TEXT_SAFE')) newErrors.address = "Alamat mengandung karakter tidak valid";
     if (!validateInput(formData.city, 'TEXT_SAFE')) newErrors.city = "Nama kota tidak valid";
-    if (!validateInput(formData.zip, 'ZIP')) newErrors.zip = "Kode pos tidak valid";
+    if (!validateInput(formData.zip, 'ZIP')) newErrors.zip = "Kode pos tidak valid (3-10 karakter)";
 
     if (paymentMethod === 'card') {
-      // Basic Length Checks for demo
-      if (!/^[0-9\s]{16,19}$/.test(formData.cardNumber)) newErrors.cardNumber = "Nomor kartu tidak valid";
-      if (!formData.expiry) newErrors.expiry = "Wajib diisi";
-      if (!/^[0-9]{3,4}$/.test(formData.cvc)) newErrors.cvc = "CVC tidak valid";
+      const cleanCard = formData.cardNumber.replace(/\s/g, '');
+      if (!validateInput(cleanCard, 'CARD')) newErrors.cardNumber = "Nomor kartu tidak valid";
+      if (!validateInput(formData.expiry, 'EXPIRY')) newErrors.expiry = "Format BB/TT salah";
+      if (!validateInput(formData.cvc, 'CVC')) newErrors.cvc = "CVC tidak valid";
     }
 
     setErrors(newErrors);
@@ -91,7 +92,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
     if (e) e.preventDefault();
     
     if (!validateForm()) {
-      // Shake animation or visual cue could be added here
       return;
     }
 
@@ -192,6 +192,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
                     <div className="col-span-1">
                       <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Nama Depan</label>
                       <input name="firstName" value={formData.firstName} onChange={handleChange} type="text" placeholder="Budi" className={`w-full h-12 bg-gray-50 border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.firstName ? 'border-red-300 focus:ring-red-100' : 'border-gray-300 focus:border-accent focus:ring-accent/20'}`} />
+                      {errors.firstName && <p className="text-[10px] text-red-500 mt-1">{errors.firstName}</p>}
                     </div>
                     <div className="col-span-1">
                       <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Nama Belakang</label>
@@ -200,6 +201,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
                     <div className="col-span-2">
                       <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Alamat Lengkap</label>
                       <input name="address" value={formData.address} onChange={handleChange} type="text" placeholder="Jl. Sudirman No. 123" className={`w-full h-12 bg-gray-50 border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.address ? 'border-red-300 focus:ring-red-100' : 'border-gray-300 focus:border-accent focus:ring-accent/20'}`} />
+                      {errors.address && <p className="text-[10px] text-red-500 mt-1">{errors.address}</p>}
                     </div>
                     <div className="col-span-1">
                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Kota</label>
@@ -208,6 +210,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
                     <div className="col-span-1">
                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Kode Pos</label>
                        <input name="zip" value={formData.zip} onChange={handleChange} type="text" placeholder="12190" className={`w-full h-12 bg-gray-50 border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.zip ? 'border-red-300 focus:ring-red-100' : 'border-gray-300 focus:border-accent focus:ring-accent/20'}`} />
+                       {errors.zip && <p className="text-[10px] text-red-500 mt-1">{errors.zip}</p>}
                     </div>
                   </div>
                 </div>
@@ -261,11 +264,13 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Masa Berlaku</label>
-                                <input name="expiry" value={formData.expiry} onChange={handleChange} type="text" placeholder="BB / TT" className={`w-full h-12 bg-white border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.expiry ? 'border-red-300' : 'border-gray-300 focus:border-accent'}`} />
+                                <input name="expiry" value={formData.expiry} onChange={handleChange} type="text" placeholder="BB/TT" className={`w-full h-12 bg-white border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.expiry ? 'border-red-300' : 'border-gray-300 focus:border-accent'}`} />
+                                {errors.expiry && <p className="text-xs text-red-500 mt-1">{errors.expiry}</p>}
                               </div>
                               <div>
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">CVC</label>
                                 <input name="cvc" value={formData.cvc} onChange={handleChange} type="text" placeholder="123" className={`w-full h-12 bg-white border rounded-lg px-4 text-base focus:outline-none focus:ring-2 transition-all ${errors.cvc ? 'border-red-300' : 'border-gray-300 focus:border-accent'}`} />
+                                {errors.cvc && <p className="text-xs text-red-500 mt-1">{errors.cvc}</p>}
                               </div>
                             </div>
                         </div>

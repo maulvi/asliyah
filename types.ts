@@ -18,16 +18,16 @@ export interface ProductImage {
 export interface Product {
   id: number;
   name: string;
-  slug: string; // Essential for WordPress SEO
+  slug: string;
   permalink?: string;
   date_created?: string;
   type?: 'simple' | 'variable' | 'grouped';
   status?: 'publish' | 'draft';
   featured?: boolean;
-  description: string; // HTML Content from WP
-  short_description: string; // HTML Content from WP
+  description: string; // HTML Content
+  short_description: string; // HTML Content
   sku?: string;
-  price: number; // Casted from string in WC
+  price: number;
   regular_price?: number;
   sale_price?: number;
   on_sale?: boolean;
@@ -48,9 +48,9 @@ export interface Product {
   rating_count?: number;
   average_rating?: string;
   
-  // Frontend specific helpers (mapped from WC data)
+  // Frontend helpers
   category: string; 
-  image: string; // Main image helper
+  image: string; 
   rating: number;
   reviews: number;
   scarcityText?: string;
@@ -87,13 +87,7 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
-  username?: string; // WP Username
-}
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
+  username?: string;
 }
 
 export interface BlogPost {
@@ -105,6 +99,6 @@ export interface BlogPost {
   author: string;
   date: string;
   image: string;
-  content: string[]; // Or HTML string for WP
+  content: string[];
   excerpt?: string;
 }

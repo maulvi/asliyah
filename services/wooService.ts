@@ -2,22 +2,44 @@
 import { Product, BlogPost } from '../types';
 import { PRODUCTS, BLOG_POSTS } from '../constants';
 
-// Konfigurasi untuk WooCommerce REST API
+// Helper to safely get env vars in both Vite and CRA/Node environments
+const getEnv = (key: string, viteKey: string) => {
+  let val = '';
+  // Check process.env (Node/CRA)
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      val = process.env[key] || '';
+    }
+  } catch {}
+  
+  // Check import.meta.env (Vite)
+  if (!val) {
+    try {
+       // @ts-ignore
+       if (typeof import.meta !== 'undefined' && import.meta.env) {
+          // @ts-ignore
+          val = import.meta.env[key] || import.meta.env[viteKey] || '';
+       }
+    } catch {}
+  }
+  return val;
+};
+
+// Configuration for WooCommerce REST API
 const WC_CONFIG = {
-  baseUrl: process.env.REACT_APP_WC_URL || '', // e.g., https://your-site.com
-  consumerKey: process.env.REACT_APP_WC_KEY || '',
-  consumerSecret: process.env.REACT_APP_WC_SECRET || '',
+  baseUrl: getEnv('REACT_APP_WC_URL', 'VITE_WC_URL'), 
+  consumerKey: getEnv('REACT_APP_WC_KEY', 'VITE_WC_KEY'),
+  consumerSecret: getEnv('REACT_APP_WC_SECRET', 'VITE_WC_SECRET'),
 };
 
 /**
- * Helper untuk mengubah Mock Data (constants.ts) menjadi format yang sesuai interface baru
- * Ini memastikan aplikasi tidak error saat transisi ke tipe data WooCommerce
+ * Helper to map Mock Data to WC Interface
  */
 const mapMockProductToWC = (p: any): Product => ({
   ...p,
   slug: p.name.toLowerCase().replace(/ /g, '-'),
   short_description: p.shortDescription || p.description.substring(0, 100) + '...',
-  description: `<p>${p.description}</p>`, // Simulasi HTML WP
+  description: `<p>${p.description}</p>`, // Simulate WP HTML
   images: p.gallery ? p.gallery.map((url: string, i: number) => ({ id: i, src: url, name: p.name })) : [{ id: 1, src: p.image, name: p.name }],
   average_rating: p.rating.toString(),
   rating_count: p.reviews,
@@ -36,28 +58,22 @@ const mapMockPostToWC = (p: any): BlogPost => ({
 // --- API SERVICES ---
 
 export const fetchProducts = async (category: string = 'Semua', page: number = 1, perPage: number = 10): Promise<{ products: Product[], total: number }> => {
-  // JIKA API KEY TERSEDIA, GUNAKAN LIVE WOOCOMMERCE
+  // IF API KEY IS AVAILABLE, USE LIVE WOOCOMMERCE
   if (WC_CONFIG.baseUrl && WC_CONFIG.consumerKey) {
     try {
       let url = `${WC_CONFIG.baseUrl}/wp-json/wc/v3/products?consumer_key=${WC_CONFIG.consumerKey}&consumer_secret=${WC_CONFIG.consumerSecret}&page=${page}&per_page=${perPage}&status=publish`;
       
-      if (category !== 'Semua') {
-         // Di real app, Anda perlu fetch category ID dulu. Disini kita mock category ID param
-         // url += `&category=${categoryId}`; 
-      }
-
       const res = await fetch(url);
       const data = await res.json();
       const total = parseInt(res.headers.get('X-WP-Total') || '0', 10);
       
-      // Mapping Real WC Data ke UI kita
       const mappedProducts = data.map((p: any) => ({
         ...p,
         image: p.images[0]?.src || 'placeholder.jpg',
         category: p.categories[0]?.name || 'Uncategorized',
         price: parseInt(p.price || '0', 10),
-        rating: parseFloat(p.average_rating),
-        reviews: p.rating_count,
+        rating: parseFloat(p.average_rating) || 0,
+        reviews: p.rating_count || 0,
         description: p.description,
         short_description: p.short_description,
       }));
@@ -68,8 +84,8 @@ export const fetchProducts = async (category: string = 'Semua', page: number = 1
     }
   }
 
-  // FALLBACK: MOCK DATA (Untuk demo saat ini)
-  await new Promise(resolve => setTimeout(resolve, 600)); // Simulate network latency
+  // FALLBACK: MOCK DATA
+  await new Promise(resolve => setTimeout(resolve, 600)); // Simulate network
   
   let filtered = PRODUCTS.map(mapMockProductToWC);
   if (category !== 'Semua') {
@@ -83,20 +99,17 @@ export const fetchProducts = async (category: string = 'Semua', page: number = 1
 };
 
 export const fetchProductBySlug = async (slug: string): Promise<Product | null> => {
-  // Fallback Logic
   await new Promise(resolve => setTimeout(resolve, 300));
   const found = PRODUCTS.map(mapMockProductToWC).find(p => p.slug === slug);
   return found || null;
 };
 
 export const fetchBlogPosts = async (): Promise<BlogPost[]> => {
-  // Bisa dihubungkan ke WP REST API (/wp-json/wp/v2/posts)
   await new Promise(resolve => setTimeout(resolve, 400));
   return BLOG_POSTS.map(mapMockPostToWC);
 };
 
 export const createOrder = async (orderData: any) => {
   console.log("Sending order to WooCommerce:", orderData);
-  // Di sini implementasi POST ke /wp-json/wc/v3/orders
   return { success: true, orderId: Math.floor(Math.random() * 10000) };
 };

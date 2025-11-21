@@ -62,6 +62,7 @@ export const sanitizeHtml = (html: string): string => {
  * Prevents basic HTML injection in text fields.
  */
 export const escapeInput = (input: string): string => {
+  if (typeof input !== 'string') return '';
   return input
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -71,11 +72,11 @@ export const escapeInput = (input: string): string => {
 };
 
 /**
- * Strict validation patterns
+ * Strict validation patterns for Penetration Testing defense
  */
 export const VALIDATION_PATTERNS = {
-  // Alphanumeric, spaces, common punctuation. No script tags or code blocks.
-  TEXT_SAFE: /^[a-zA-Z0-9\s.,!?@#%&()_\-+'"]*$/,
+  // Alphanumeric, spaces, common punctuation. No script tags, no control chars.
+  TEXT_SAFE: /^[a-zA-Z0-9\s.,!?@#%&()_\-+'"\/]*$/,
   
   // Strict Email
   EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
@@ -84,7 +85,16 @@ export const VALIDATION_PATTERNS = {
   PHONE: /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/,
   
   // Zip Code (3-10 digits/letters)
-  ZIP: /^[a-zA-Z0-9\s-]{3,10}$/
+  ZIP: /^[a-zA-Z0-9\s-]{3,10}$/,
+
+  // Credit Card (Simple Luhn-like length check, 13-19 digits, optional spaces)
+  CARD: /^[0-9\s]{13,19}$/,
+
+  // CVC (3 or 4 digits)
+  CVC: /^[0-9]{3,4}$/,
+
+  // Expiry (MM/YY or MM/YYYY)
+  EXPIRY: /^(0[1-9]|1[0-2])\/?([0-9]{2}|[0-9]{4})$/
 };
 
 export const validateInput = (value: string, type: keyof typeof VALIDATION_PATTERNS): boolean => {
