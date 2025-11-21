@@ -1,23 +1,38 @@
 
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartDrawer from './components/CartDrawer';
 import SearchOverlay from './components/SearchOverlay';
-import Home from './pages/Home';
-import ProductDetail from './pages/ProductDetail';
-import Checkout from './pages/Checkout';
-import Shop from './pages/Shop';
-import Blog from './pages/Blog'; // New
-import BlogPostDetail from './pages/BlogPost'; // New
-import Account from './pages/Account';
-import Auth from './pages/Auth';
 import AIStylist from './components/AIStylist'; 
 import { Product, CartItem, User } from './types';
-import { BLOG_POSTS } from './constants'; // Updated
+import { BLOG_POSTS } from './constants';
+import { Loader2 } from 'lucide-react';
+
+// Eager Load Home for LCP (Largest Contentful Paint) optimization
+import Home from './pages/Home';
+
+// Lazy Load other pages to reduce initial bundle size
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const Shop = lazy(() => import('./pages/Shop'));
+const Blog = lazy(() => import('./pages/Blog'));
+const BlogPostDetail = lazy(() => import('./pages/BlogPost'));
+const Account = lazy(() => import('./pages/Account'));
+const Auth = lazy(() => import('./pages/Auth'));
 
 // Updated routing state
 type Page = 'home' | 'shop' | 'product' | 'checkout' | 'blog' | 'blog-post' | 'account' | 'auth';
+
+// Elegant Loading Fallback
+const PageLoader = () => (
+  <div className="min-h-[60vh] flex items-center justify-center w-full">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-12 h-12 border-2 border-gray-100 border-t-primary rounded-full animate-spin"></div>
+      <span className="text-xs font-bold uppercase tracking-widest text-gray-400 animate-pulse">Memuat Aura...</span>
+    </div>
+  </div>
+);
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -78,11 +93,8 @@ const App: React.FC = () => {
   // Cart Logic
   const addToCart = (product: Product, qty: number = 1, attributes?: Record<string, string>) => {
     setCart(prev => {
-      // Generate a basic ID based on product ID + attributes for cart separation
-      // In real WooCommerce, this logic happens on backend or uses Variation ID
-      const existing = prev.find(item => item.id === product.id); // Simplified check
+      const existing = prev.find(item => item.id === product.id); 
       
-      // For now, just add/update simple logic
       if (existing) {
         return prev.map(item => 
           item.id === product.id 
@@ -117,47 +129,70 @@ const App: React.FC = () => {
     switch (currentPage) {
       case 'checkout':
         return (
-          <Checkout 
-            cart={cart} 
-            total={cartTotal} 
-            onBack={() => setCurrentPage('home')}
-            onPlaceOrder={handlePlaceOrder}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <Checkout 
+              cart={cart} 
+              total={cartTotal} 
+              onBack={() => setCurrentPage('home')}
+              onPlaceOrder={handlePlaceOrder}
+            />
+          </Suspense>
         );
       case 'product':
         return selectedProduct ? (
-           <ProductDetail 
-              product={selectedProduct} 
-              onBack={handleBackToHome}
-              onAddToCart={addToCart}
-            />
+           <Suspense fallback={<PageLoader />}>
+             <ProductDetail 
+                product={selectedProduct} 
+                onBack={handleBackToHome}
+                onAddToCart={addToCart}
+              />
+           </Suspense>
         ) : null;
       case 'shop':
         return (
-          <Shop 
-            initialCategory={shopCategory}
-            onViewProduct={handleViewProduct}
-            onAddToCart={(p) => addToCart(p, 1)}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <Shop 
+              initialCategory={shopCategory}
+              onViewProduct={handleViewProduct}
+              onAddToCart={(p) => addToCart(p, 1)}
+            />
+          </Suspense>
         );
       case 'blog':
         return (
-          <Blog onReadPost={handleReadPost} />
+          <Suspense fallback={<PageLoader />}>
+            <Blog onReadPost={handleReadPost} />
+          </Suspense>
         );
       case 'blog-post':
         const post = BLOG_POSTS.find(p => p.id === selectedPostId) || BLOG_POSTS[0];
         return (
-          <BlogPostDetail 
-            post={post} 
-            onBack={() => setCurrentPage('blog')} 
-          />
+          <Suspense fallback={<PageLoader />}>
+            <BlogPostDetail 
+              post={post} 
+              onBack={() => setCurrentPage('blog')} 
+            />
+          </Suspense>
         );
       case 'auth':
-        return <Auth onLogin={handleLogin} />;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <Auth onLogin={handleLogin} />
+          </Suspense>
+        );
       case 'account':
-        return currentUser ? <Account user={currentUser} onLogout={handleLogout} /> : <Auth onLogin={handleLogin} />;
+        return currentUser ? (
+          <Suspense fallback={<PageLoader />}>
+            <Account user={currentUser} onLogout={handleLogout} />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<PageLoader />}>
+            <Auth onLogin={handleLogin} />
+          </Suspense>
+        );
       case 'home':
       default:
+        // Home is eager loaded
         return (
            <Home 
               onViewProduct={handleViewProduct} 

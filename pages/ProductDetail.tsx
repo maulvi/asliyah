@@ -71,6 +71,10 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
               <img 
                 src={activeImage} 
                 alt={product.name} 
+                // @ts-ignore
+                fetchPriority="high"
+                loading="eager" // Main product image is above fold
+                decoding="sync"
                 className="w-full h-full object-cover transition-all duration-500" 
               />
             </div>
@@ -83,7 +87,13 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, onAddToC
                   aria-label={`View image ${idx + 1} of ${product.name}`}
                   aria-current={activeImage === img ? 'true' : undefined}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" aria-hidden="true" />
+                  <img 
+                    src={img} 
+                    alt="" 
+                    loading="lazy" // Thumbs can be lazy
+                    className="w-full h-full object-cover" 
+                    aria-hidden="true" 
+                  />
                 </button>
               ))}
             </div>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Star, ArrowRight, Sparkles, TrendingUp } from 'lucide-react';
 import { Product } from '../types';
@@ -23,6 +24,7 @@ const Home: React.FC<HomeProps> = ({ onViewProduct, onAddToCart }) => {
     <div className="animate-fade-in w-full bg-soft-bg">
       
       {/* 1. COMPACT BOXED HERO */}
+      {/* Optimized for LCP: Eager loading + High Priority */}
       <div className="px-4 md:px-6 pt-2 pb-8">
         <section className="relative h-[550px] w-full rounded-[2rem] overflow-hidden group">
           {/* Background Image */}
@@ -30,7 +32,9 @@ const Home: React.FC<HomeProps> = ({ onViewProduct, onAddToCart }) => {
             src="https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=1200&auto=format&fit=crop" 
             alt="Hero Fashion" 
             // @ts-ignore
-            fetchPriority="high"
+            fetchPriority="high" // CRITICAL for Core Web Vitals (LCP)
+            loading="eager"
+            decoding="sync" // Decode immediately for Hero
             className="w-full h-full object-cover object-[center_25%] transition-transform duration-[2s] group-hover:scale-105"
           />
           
@@ -58,7 +62,7 @@ const Home: React.FC<HomeProps> = ({ onViewProduct, onAddToCart }) => {
       </div>
 
       {/* 2. COMPACT MARQUEE */}
-      <div className="border-y border-primary/5 bg-white py-3 overflow-hidden">
+      <div className="border-y border-primary/5 bg-white py-3 overflow-hidden content-visibility-auto">
         <div className="flex whitespace-nowrap animate-marquee">
           {[...Array(4)].map((_, i) => (
              <div key={i} className="flex items-center">
@@ -73,7 +77,7 @@ const Home: React.FC<HomeProps> = ({ onViewProduct, onAddToCart }) => {
       </div>
 
       {/* 3. SHOP SECTION */}
-      <section id="shop" className="py-12 px-4 md:px-8">
+      <section id="shop" className="py-12 px-4 md:px-8 content-visibility-auto">
         
         {/* Header & Filter */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
@@ -113,12 +117,14 @@ const Home: React.FC<HomeProps> = ({ onViewProduct, onAddToCart }) => {
       </section>
 
       {/* 4. THE EDIT - Boxed Banner */}
-      <section className="py-8 px-4 md:px-8">
+      <section className="py-8 px-4 md:px-8 content-visibility-auto">
          <div className="bg-primary rounded-[2rem] overflow-hidden text-[#F2F0EB] relative grid grid-cols-1 lg:grid-cols-2">
             <div className="relative h-[400px] lg:h-auto">
                <img 
                  src={spotlightProduct.image} 
                  alt="Editor Pick" 
+                 loading="lazy" // Lazy load below fold
+                 decoding="async"
                  className="w-full h-full object-cover opacity-90"
                />
             </div>
@@ -144,7 +150,7 @@ const Home: React.FC<HomeProps> = ({ onViewProduct, onAddToCart }) => {
       </section>
 
       {/* 5. NEWSLETTER - Minimalist */}
-      <section className="py-16 px-6 text-center bg-surface mt-8">
+      <section className="py-16 px-6 text-center bg-surface mt-8 content-visibility-auto">
          <h2 className="text-2xl font-serif text-primary mb-3">Aura Inner Circle</h2>
          <p className="text-secondary text-xs md:text-sm mb-6">Dapatkan inspirasi mingguan & akses awal ke koleksi baru.</p>
          <div className="flex max-w-sm mx-auto border-b border-primary pb-1">

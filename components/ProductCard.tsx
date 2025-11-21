@@ -1,3 +1,4 @@
+
 import React, { memo } from 'react';
 import { Product } from '../types';
 import { Plus, Star, Heart, AlertCircle } from 'lucide-react';
@@ -8,7 +9,7 @@ interface ProductCardProps {
   onClick: (product: Product) => void;
 }
 
-// Using memo to prevent re-renders when parent state changes (e.g., opening cart)
+// Using memo is CRITICAL for list performance, preventing re-renders of all cards when one changes
 const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToCart, onClick }) => {
   const formatIDR = (price: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
@@ -23,7 +24,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToCart, on
 
   return (
     <div 
-      className="group relative flex flex-col h-full cursor-pointer focus:outline-none" 
+      className="group relative flex flex-col h-full cursor-pointer focus:outline-none content-visibility-auto" 
       onClick={() => onClick(product)}
       onKeyDown={handleKeyDown}
       role="button"
@@ -31,19 +32,19 @@ const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToCart, on
       aria-label={`View details for ${product.name}, price ${formatIDR(product.price)}`}
     >
       {/* Image Container - Organic Corners & Immersive */}
-      <div className="relative w-full aspect-[3/4] overflow-hidden rounded-xl md:rounded-2xl bg-[#F2F0EB] shadow-sm group-hover:shadow-xl group-hover:shadow-primary/5 transition-all duration-500">
+      <div className="relative w-full aspect-[3/4] overflow-hidden rounded-xl md:rounded-2xl bg-[#F2F0EB] shadow-sm group-hover:shadow-xl group-hover:shadow-primary/5 transition-all duration-500 transform-gpu">
         
         {/* Main Image with Optimized Loading */}
         <img 
           src={product.image} 
           alt={product.name} 
-          loading="lazy"
-          decoding="async"
+          loading="lazy" // Lazy load off-screen images
+          decoding="async" // Don't block main thread while decoding
           className="w-full h-full object-cover transition-transform duration-1000 ease-out will-change-transform group-hover:scale-110"
         />
         
         {/* Subtle Dark Overlay on Hover for Text Readability */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500" aria-hidden="true" />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500 pointer-events-none" aria-hidden="true" />
 
         {/* Top Badges (Floating) */}
         <div className="absolute top-2 left-2 right-2 md:top-3 md:left-3 md:right-3 flex justify-between items-start z-10">
