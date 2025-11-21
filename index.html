@@ -30,10 +30,13 @@
               'accent-light': '#F5EBE6', // Soft Clay Wash
               'soft-bg': '#FFFEFC', // Warm White
               'surface': '#F2F0EB', // Natural Linen
+              'outer-bg': '#E8E6E1', // Background outside the box
             },
             borderRadius: {
               'xl': '0.75rem',
               '2xl': '1rem',
+              '3xl': '1.5rem',
+              '4xl': '2rem',
             },
             animation: {
               'fade-in': 'fadeIn 0.8s ease-out forwards',
@@ -80,7 +83,7 @@
 }
 </script>
 </head>
-  <body class="bg-soft-bg text-primary antialiased selection:bg-accent selection:text-white">
+  <body class="bg-outer-bg text-primary antialiased selection:bg-accent selection:text-white">
     <div id="root"></div>
   </body>
 </html>

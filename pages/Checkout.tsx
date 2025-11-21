@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CartItem } from '../types';
-import { ShieldCheck, Lock, CreditCard, ArrowLeft, CheckCircle2, Package } from 'lucide-react';
+import { ShieldCheck, Lock, CreditCard, ArrowLeft, CheckCircle2, Package, ChevronDown, ChevronUp, Landmark, Banknote, Wallet } from 'lucide-react';
 
 interface CheckoutProps {
   cart: CartItem[];
@@ -10,12 +10,20 @@ interface CheckoutProps {
   onPlaceOrder: () => void;
 }
 
+type PaymentMethod = 'card' | 'transfer' | 'cod';
+
 const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+  const [selectedBank, setSelectedBank] = useState('bca');
+  
   const FREE_SHIPPING_THRESHOLD = 1500000;
   const shippingCost = total >= FREE_SHIPPING_THRESHOLD ? 0 : 20000;
-  const finalTotal = total + shippingCost;
+  // COD Fee adds a small charge usually, but let's keep it simple or free for high conversion
+  const codFee = paymentMethod === 'cod' ? 5000 : 0; 
+  const finalTotal = total + shippingCost + codFee;
 
   const formatIDR = (price: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
@@ -25,8 +33,8 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
     window.scrollTo(0, 0);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsProcessing(true);
     setTimeout(() => {
       setIsProcessing(false);
@@ -35,6 +43,17 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
         onPlaceOrder();
       }, 3000);
     }, 2000);
+  };
+
+  const handleExternalSubmit = () => {
+    const form = document.getElementById('checkout-form') as HTMLFormElement;
+    if (form) {
+      if (form.checkValidity()) {
+        handleSubmit();
+      } else {
+        form.reportValidity();
+      }
+    }
   };
 
   if (isSuccess) {
@@ -57,9 +76,9 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
   }
 
   return (
-    <div className="h-screen w-full bg-white flex flex-col overflow-hidden animate-fade-in">
-      {/* Header - Compact */}
-      <header className="h-16 flex-none border-b border-gray-100 bg-white px-6 lg:px-8 flex justify-between items-center z-20 relative shadow-sm">
+    <div className="min-h-screen w-full bg-white flex flex-col animate-fade-in lg:h-screen lg:overflow-hidden">
+      {/* Header - Sticky on Mobile */}
+      <header className="h-16 flex-none border-b border-gray-100 bg-white px-6 lg:px-8 flex justify-between items-center z-30 sticky top-0 lg:relative shadow-sm lg:shadow-none">
         <button 
           onClick={onBack} 
           className="group flex items-center gap-2 text-gray-500 hover:text-primary transition-colors"
@@ -79,12 +98,12 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
         </div>
       </header>
 
-      {/* Split Layout 60:40 */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      {/* Main Layout: Mobile Scrollable / Desktop Fixed Split */}
+      <div className="flex-1 flex flex-col-reverse lg:flex-row overflow-visible lg:overflow-hidden">
         
-        {/* Left: Form Area (60%) - CENTERED GRID */}
-        <div className="w-full lg:w-[60%] h-full overflow-y-auto scrollbar-thin bg-white flex flex-col items-center justify-center relative py-8">
-          <div className="w-full max-w-xl px-6 lg:px-10">
+        {/* 1. FORM AREA (Left on Desktop, Bottom on Mobile) */}
+        <div className="w-full lg:w-[60%] h-auto lg:h-full overflow-visible lg:overflow-y-auto bg-white relative z-10 pb-32 lg:pb-0">
+          <div className="w-full max-w-xl mx-auto px-6 lg:px-10 py-8">
               
               <form id="checkout-form" onSubmit={handleSubmit} className="space-y-8 w-full">
                 
@@ -135,67 +154,178 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
                   </div>
                 </div>
 
-                {/* Payment */}
+                {/* Payment Method Selection */}
                 <div className="space-y-4 animate-slide-up" style={{animationDelay: '0.3s'}}>
                    <div className="flex items-center justify-between pb-2 border-b border-gray-200">
                     <h3 className="text-xl font-serif text-primary">Pembayaran</h3>
                   </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      type="button" 
+                      onClick={() => setPaymentMethod('card')}
+                      className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${paymentMethod === 'card' ? 'border-accent bg-accent/5 text-accent shadow-sm' : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'}`}
+                    >
+                      <CreditCard size={24} strokeWidth={1.5} className="mb-2" />
+                      <span className="text-[10px] font-bold uppercase tracking-wide">Kartu</span>
+                    </button>
+                    <button
+                      type="button" 
+                      onClick={() => setPaymentMethod('transfer')}
+                      className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${paymentMethod === 'transfer' ? 'border-accent bg-accent/5 text-accent shadow-sm' : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'}`}
+                    >
+                      <Landmark size={24} strokeWidth={1.5} className="mb-2" />
+                      <span className="text-[10px] font-bold uppercase tracking-wide">Transfer</span>
+                    </button>
+                    <button
+                      type="button" 
+                      onClick={() => setPaymentMethod('cod')}
+                      className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${paymentMethod === 'cod' ? 'border-accent bg-accent/5 text-accent shadow-sm' : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'}`}
+                    >
+                      <Banknote size={24} strokeWidth={1.5} className="mb-2" />
+                      <span className="text-[10px] font-bold uppercase tracking-wide">COD</span>
+                    </button>
+                  </div>
                    
-                   <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Nomor Kartu</label>
-                        <div className="relative">
-                          <input required type="text" placeholder="0000 0000 0000 0000" className="w-full h-12 bg-white border border-gray-300 rounded-lg pl-11 pr-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
-                          <CreditCard size={20} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                   {/* Conditional Payment Forms */}
+                   <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 transition-all duration-300">
+                      
+                      {paymentMethod === 'card' && (
+                        <div className="space-y-4 animate-fade-in">
+                            <div>
+                              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Nomor Kartu</label>
+                              <div className="relative">
+                                <input required type="text" placeholder="0000 0000 0000 0000" className="w-full h-12 bg-white border border-gray-300 rounded-lg pl-11 pr-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                                <CreditCard size={20} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Masa Berlaku</label>
+                                <input required type="text" placeholder="BB / TT" className="w-full h-12 bg-white border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">CVC</label>
+                                <input required type="text" placeholder="123" className="w-full h-12 bg-white border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                              </div>
+                            </div>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Masa Berlaku</label>
-                          <input required type="text" placeholder="BB / TT" className="w-full h-12 bg-white border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                      )}
+
+                      {paymentMethod === 'transfer' && (
+                        <div className="space-y-4 animate-fade-in">
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Pilih Bank</label>
+                            <div className="relative">
+                              <select 
+                                value={selectedBank}
+                                onChange={(e) => setSelectedBank(e.target.value)}
+                                className="w-full h-12 bg-white border border-gray-300 rounded-lg pl-4 pr-10 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all appearance-none cursor-pointer"
+                              >
+                                <option value="bca">Bank BCA (Dicek Otomatis)</option>
+                                <option value="mandiri">Bank Mandiri (Dicek Otomatis)</option>
+                                <option value="bri">Bank BRI</option>
+                                <option value="bni">Bank BNI</option>
+                              </select>
+                              <ChevronDown size={18} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            </div>
+                          </div>
+                          <div className="p-4 bg-white rounded-lg border border-gray-200 text-sm text-gray-600">
+                            <p>Nomor Virtual Account akan digenerate setelah Anda menekan tombol <strong>Bayar Sekarang</strong>. Verifikasi pembayaran berjalan otomatis.</p>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">CVC</label>
-                          <input required type="text" placeholder="123" className="w-full h-12 bg-white border border-gray-300 rounded-lg px-4 text-base text-gray-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder-gray-400" />
+                      )}
+
+                      {paymentMethod === 'cod' && (
+                        <div className="flex items-start gap-3 animate-fade-in">
+                          <div className="bg-accent/10 p-2 rounded-full text-accent">
+                             <Wallet size={20} />
+                          </div>
+                          <div>
+                             <h4 className="font-bold text-primary text-sm mb-1">Bayar di Tempat</h4>
+                             <p className="text-xs text-gray-500 leading-relaxed">
+                               Silakan siapkan uang tunai sebesar <span className="font-bold text-primary">{formatIDR(finalTotal)}</span> saat kurir tiba.
+                               <br/><span className="text-accent italic mt-1 block">*Biaya penanganan COD Rp 5.000 sudah termasuk.</span>
+                             </p>
+                          </div>
                         </div>
-                      </div>
+                      )}
+
                    </div>
                 </div>
-                
-                <div className="h-8 lg:hidden"></div>
               </form>
           </div>
         </div>
 
-        {/* Right: Summary & Action Area (40%) */}
-        <div className="w-full lg:w-[40%] bg-[#f8f8f8] border-l border-gray-200 flex flex-col h-[35vh] lg:h-full shadow-[-10px_0_40px_rgba(0,0,0,0.02)] z-10 relative">
+        {/* 2. SUMMARY AREA (Right on Desktop, Top on Mobile) */}
+        <div className="w-full lg:w-[40%] bg-[#f8f8f8] border-b lg:border-b-0 lg:border-l border-gray-200 flex flex-col h-auto lg:h-full shadow-[-10px_0_40px_rgba(0,0,0,0.02)] z-20 lg:z-10">
           
-          {/* Order Items - Grows */}
-          <div className="flex-1 overflow-y-auto p-8 lg:p-12 scrollbar-thin">
-            <h3 className="text-lg font-serif text-primary mb-6">Pilihan Anda</h3>
-            <div className="space-y-6">
-              {cart.map(item => (
-                <div key={item.id} className="flex gap-5 items-start">
-                   <div className="w-16 h-20 rounded-lg bg-white border border-gray-200 overflow-hidden shadow-sm flex-shrink-0">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                   </div>
-                   <div className="flex-1 min-w-0 pt-1">
-                      <div className="flex justify-between items-start">
-                        <p className="text-base font-medium text-primary truncate pr-3 font-serif">{item.name}</p>
-                        <p className="text-base font-semibold text-primary">{formatIDR(item.price * item.quantity)}</p>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-0.5 mb-1.5 capitalize">{item.category}</p>
-                      <div className="text-xs text-gray-400 font-medium">
-                        Jml: {item.quantity}
-                      </div>
-                   </div>
-                </div>
-              ))}
+          {/* Mobile Accordion Toggle Header */}
+          <button 
+            className="lg:hidden w-full p-4 flex justify-between items-center bg-gray-50 border-b border-gray-200"
+            onClick={() => setShowMobileSummary(!showMobileSummary)}
+          >
+            <div className="flex items-center gap-2 text-primary font-medium text-sm">
+              <span>{showMobileSummary ? 'Sembunyikan' : 'Lihat'} Ringkasan Pesanan</span>
+              {showMobileSummary ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+            </div>
+            <span className="font-serif font-bold text-primary">{formatIDR(finalTotal)}</span>
+          </button>
+
+          {/* Order Items Area */}
+          <div className={`
+            flex-1 overflow-hidden transition-all duration-300 lg:block
+            ${showMobileSummary ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 lg:max-h-full lg:opacity-100'}
+          `}>
+            <div className="p-6 lg:p-12 lg:overflow-y-auto lg:h-[calc(100vh-250px)] scrollbar-thin">
+              <h3 className="hidden lg:block text-lg font-serif text-primary mb-6">Pilihan Anda</h3>
+              <div className="space-y-6">
+                {cart.map(item => (
+                  <div key={item.id} className="flex gap-4 items-start">
+                     <div className="w-16 h-20 lg:w-16 lg:h-20 rounded-lg bg-white border border-gray-200 overflow-hidden shadow-sm flex-shrink-0 relative">
+                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        <span className="absolute -top-2 -right-2 w-5 h-5 bg-gray-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold lg:hidden shadow-sm">
+                          {item.quantity}
+                        </span>
+                     </div>
+                     <div className="flex-1 min-w-0 pt-1">
+                        <div className="flex justify-between items-start">
+                          <p className="text-sm lg:text-base font-medium text-primary truncate pr-3 font-serif">{item.name}</p>
+                          <p className="text-sm lg:text-base font-semibold text-primary">{formatIDR(item.price * item.quantity)}</p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5 mb-1.5 capitalize">{item.category}</p>
+                        <div className="hidden lg:block text-xs text-gray-400 font-medium">
+                          Jml: {item.quantity}
+                        </div>
+                     </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mobile Breakdown Inline */}
+              <div className="lg:hidden mt-8 pt-6 border-t border-gray-200 space-y-3">
+                 <div className="flex justify-between text-sm text-gray-600">
+                    <span>Subtotal</span>
+                    <span>{formatIDR(total)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Pengiriman</span>
+                    <span className={shippingCost === 0 ? 'text-green-600 font-medium' : ''}>
+                      {shippingCost === 0 ? 'Gratis' : formatIDR(shippingCost)}
+                    </span>
+                  </div>
+                   {paymentMethod === 'cod' && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Biaya COD</span>
+                      <span>{formatIDR(codFee)}</span>
+                    </div>
+                  )}
+              </div>
             </div>
           </div>
 
-          {/* Totals & Checkout Button - Fixed at Bottom */}
-          <div className="p-8 lg:p-12 bg-white border-t border-gray-200 shadow-[0_-4px_30px_rgba(0,0,0,0.04)]">
+          {/* DESKTOP Bottom Section (Total + Pay Button) */}
+          <div className="hidden lg:block p-12 bg-white border-t border-gray-200 shadow-[0_-4px_30px_rgba(0,0,0,0.04)] mt-auto">
             <div className="space-y-3 mb-8">
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Subtotal</span>
@@ -207,6 +337,12 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
                   {shippingCost === 0 ? 'Gratis' : formatIDR(shippingCost)}
                 </span>
               </div>
+              {paymentMethod === 'cod' && (
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Biaya COD</span>
+                  <span>{formatIDR(codFee)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-xl font-serif text-primary pt-4 border-t border-gray-100 mt-3">
                 <span>Total</span>
                 <span>{formatIDR(finalTotal)}</span>
@@ -214,10 +350,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
             </div>
 
             <button 
-              onClick={() => {
-                const form = document.getElementById('checkout-form') as HTMLFormElement;
-                if (form) form.requestSubmit();
-              }}
+              onClick={handleExternalSubmit}
               disabled={isProcessing}
               className="w-full bg-accent hover:bg-[#b56f78] text-white h-16 rounded-xl text-base uppercase tracking-widest font-bold transition-all shadow-lg shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex justify-center items-center gap-3 group"
             >
@@ -238,6 +371,28 @@ const Checkout: React.FC<CheckoutProps> = ({ cart, total, onBack, onPlaceOrder }
         </div>
 
       </div>
+
+      {/* MOBILE FIXED BOTTOM BAR (Sticky Pay Button) */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] safe-area-bottom">
+         <div className="flex gap-4 items-center">
+            <div className="flex-1">
+               <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-0.5">Total</p>
+               <p className="text-lg font-serif font-bold text-primary leading-none">{formatIDR(finalTotal)}</p>
+            </div>
+            <button 
+              onClick={handleExternalSubmit}
+              disabled={isProcessing}
+              className="flex-1 bg-accent text-white h-12 rounded-lg text-sm uppercase tracking-widest font-bold shadow-lg shadow-accent/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+            >
+              {isProcessing ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> 
+              ) : (
+                <>Bayar <ShieldCheck size={16} /></>
+              )}
+            </button>
+         </div>
+      </div>
+
     </div>
   );
 };
